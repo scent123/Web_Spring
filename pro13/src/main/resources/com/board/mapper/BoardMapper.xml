@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- <mapper> 태그의 namespace 속성은 Mapper 인터페이스와 같은 이름으로 설정해야 한다. -->
+<mapper namespace="com.board.mapper.BoardMapper">
+
+	<!-- <select> 태그의 id 속성은 메서드의 이름과 같아야 한다.
+		 resultType 속성은 SELECT 쿼리의 결과를 특정 클래스의 객체로 만들기 위해 설정한다.
+		 이때 SQL 문의 끝에 세미콜론(;)이 들어가지 않도록 주의한다.
+		 CDATA 부분은 쿼리에서 부등호(>)를 쓰기 위해 넣은 것이다. -->
+	<select id="getList" resultType="com.board.domain.BoardVO">
+	<![CDATA[
+		SELECT * FROM board WHERE id > 0
+	]]>
+	</select>
+
+	<!-- Criteria 객체를 이용해 페이징 처리 -->
+	<!-- 오라클 12c 버전부터는 Row Limiting 절이 도입되어, 인라인 뷰(inline view)를 이용해서
+		 페이징을 처리하는 것보다 더 간단하게 처리할 수 있다. -->
+	<select id="getListWithPaging" resultType="com.board.domain.BoardVO">
+	<![CDATA[
+		SELECT id, title, writer, regdate, updatedate
+		FROM board
+		ORDER BY id DESC
+		OFFSET (#{page} - 1) * #{rowsPerPage} ROWS FETCH FIRST #{rowsPerPage} ROWS ONLY
+	]]>
+	</select>
+
+	<!-- CREATE: 새로운 게시물을 등록(추가한 게시물의 id를 알 필요가 없는 경우) -->
+	<!-- MyBatis 프레임워크에서는 내부적으로 JDBC의 PreparedStatement 객체를 이용해서 SQL을 처리한다.
+		 PreparedStatement 객체의 매개변수를 처리하는 "?"는 "#{attr}"으로 치환한다. -->
+	<insert id="insert">
+		INSERT INTO board (id, title, content, writer)
+		VALUES (SEQ_BOARD_ID.NEXTVAL, #{title}, #{content}, #{writer})
+	</insert>
+
+	<!-- CREATE: 새로운 게시물을 등록(추가한 게시물의 id를 알아야 하는 경우) -->
+	<insert id="insertSelectKey">
+		<!-- MyBatis의 @SelectKey 주해를 이용해 시퀀스 값을 미리 구해 지정한 이름으로 저장해둔다. -->
+		<selectKey keyProperty="id" order="BEFORE" resultType="long">
+			SELECT SEQ_BOARD_ID.NEXTVAL FROM dual
+		</selectKey>
+
+		<!--  미리 구해둔 시퀀스 값을 "#{id}"와 같이 이용한다. -->
+		INSERT INTO board (id, title, content, writer)
+		VALUES (#{id}, #{title}, #{content}, #{writer})
+	</insert>
+
+	<!-- READ: PK인 id 컬럼을 이용해 특정 게시물을 조회 -->
+	<select id="read" resultType="com.board.domain.BoardVO">
+		SELECT * FROM board WHERE id = #{id}
+	</select>
+
+	<!-- UPDATE: PK인 id 컬럼을 이용해 특정 게시물을 갱신 -->
+	<update id="update">
+		UPDATE board
+		SET title = #{title}, content = #{content}, writer = #{writer}, updatedate = sysdate
+		WHERE id = #{id}
+	</update>
+
+	<!-- DELETE: PK인 id 컬럼을 이용해 특정 게시물을 삭제 -->
+	<delete id="delete">
+		DELETE FROM board WHERE id = #{id}
+	</delete>
+
+	<!-- 전체 게시물의 개수를 조회 -->
+	<select id="getTotal" resultType="int">
+		SELECT COUNT(*) FROM board WHERE id > 0
+	</select>
+
+</mapper>
